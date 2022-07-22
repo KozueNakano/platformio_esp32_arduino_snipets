@@ -1,0 +1,12 @@
+{
+	"folders": [
+		{
+			"path": "."
+		},
+		{
+			"name": "ntp_sleep_time",
+			"path": "ntp_sleep_time"
+		}
+	],
+	"settings": {}
+}
