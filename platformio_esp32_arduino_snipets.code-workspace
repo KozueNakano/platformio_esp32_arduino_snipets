@@ -6,6 +6,9 @@
 		{
 			"name": "ntp_sleep_time",
 			"path": "ntp_sleep_time"
+		},
+		{
+			"path": "linght_sleep_gpio_wakeup"
 		}
 	],
 	"settings": {}

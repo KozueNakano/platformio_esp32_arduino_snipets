@@ -34,6 +34,7 @@ void timeavailable(struct timeval *t)
 {
   Serial.println("Got time adjustment from NTP!");
   printLocalTime();
+  WiFi.mode(WIFI_OFF);
 }
 
 void setup()
@@ -69,7 +70,6 @@ void setup()
       Serial.print(".");
   }
   Serial.println(" CONNECTED");
-
   esp_sleep_enable_timer_wakeup(5000000);
 }
 
