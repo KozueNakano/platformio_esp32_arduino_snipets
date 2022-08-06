@@ -13,6 +13,10 @@
 		{
 			"name": "I2C_LCD",
 			"path": "I2C_LCD"
+		},
+		{
+			"name": "esp32_sleep_gpio_state",
+			"path": "esp32_sleep_gpio_state"
 		}
 	],
 	"settings": {}
