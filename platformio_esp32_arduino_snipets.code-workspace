@@ -9,6 +9,10 @@
 		},
 		{
 			"path": "linght_sleep_gpio_wakeup"
+		},
+		{
+			"name": "I2C_LCD",
+			"path": "I2C_LCD"
 		}
 	],
 	"settings": {}
