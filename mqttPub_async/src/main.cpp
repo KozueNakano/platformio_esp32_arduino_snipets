@@ -29,11 +29,6 @@ TimerHandle_t wifiReconnectTimer;
 
 bool newtwork_keepConn = false;
 
-/*main------------------------------------------*/
-static EventGroupHandle_t sleepable_event_group;
-#define NET_OK_BIT BIT0
-/*------------------------------------------main*/
-
 void connectToWifi()
 {
   Serial.println("Connecting to Wi-Fi...");
@@ -99,8 +94,16 @@ void onMqttPublish(uint16_t packetId)
   xEventGroupSetBits(networkTaskFinished_event_group, MQTT_OK_BIT);
 }
 
+struct networkTaskArgs
+{
+  EventGroupHandle_t sleepEventHandle;
+  EventBits_t net_ok_bit;
+};
+
 void task_network(void *pvParameters)
 {
+  struct networkTaskArgs *argStruct = (networkTaskArgs *)pvParameters;
+
   networkTaskFinished_event_group = xEventGroupCreate();
   xEventGroupClearBits(networkTaskFinished_event_group, 0xFFFFFF);
 
@@ -139,26 +142,36 @@ void task_network(void *pvParameters)
       WiFi.mode(WIFI_OFF);
       Serial.println("send finish");
     }
-    xEventGroupSetBits(sleepable_event_group, NET_OK_BIT);
+    // xEventGroupSetBits(sleepable_event_group, NET_OK_BIT);
+    xEventGroupSetBits(argStruct->sleepEventHandle, argStruct->net_ok_bit);
   }
   vTaskDelete(NULL);
 }
 
+/*main------------------------------------------*/
+static EventGroupHandle_t sleepable_event_group;
+#define NET_OK_BIT BIT0
+
+struct networkTaskArgs netTaskArg;
+/*------------------------------------------main*/
+
 void setup()
 {
-
-  Serial.begin(115200);
-  Serial.println();
-
   // イベントグループの初期化
   sleepable_event_group = xEventGroupCreate();
   xEventGroupClearBits(sleepable_event_group, 0xFFFFFF);
+  
+  netTaskArg.net_ok_bit = NET_OK_BIT;
+  netTaskArg.sleepEventHandle = sleepable_event_group;
+
+  Serial.begin(115200);
+  Serial.println();
 
   xTaskCreateUniversal(
       task_network,               // 作成するタスク関数
       "task_network",             // 表示用タスク名
       8192,                       // スタックメモリ量
-      NULL,                       // 起動パラメータ
+      &netTaskArg,                // 起動パラメータ
       1,                          // 優先度
       &task_network_handle,       // タスクハンドル
       CONFIG_ARDUINO_RUNNING_CORE // 実行するコア
