@@ -17,6 +17,17 @@
 		{
 			"name": "esp32_sleep_gpio_state",
 			"path": "esp32_sleep_gpio_state"
+		},
+		{
+			"name": "pulse_counter",
+			"path": "pulse_counter"
+		},
+		{
+			"path": "timeval_us"
+		},
+		{
+			"name": "mqttPub_async",
+			"path": "mqttPub_async"
 		}
 	],
 	"settings": {}
