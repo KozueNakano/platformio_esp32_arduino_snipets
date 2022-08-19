@@ -9,6 +9,9 @@ static const uint64_t mode0Pin_mask = 0b1 << mode0Pin;
 static const uint64_t mode1Pin_mask = 0b1 << mode1Pin;
 static const uint64_t sendPin_mask = 0b1 << sendPin;
 
+static const int16_t pcnt_h_lim INT16_MAX; //カウンタの上限 今回は使ってない
+static const int16_t pcnt_l_lim INT16_MIN; //カウンタの下限 今回は使ってない
+
 void swIoSetting(void)
 {
   pinMode(mode0Pin, INPUT);
@@ -97,4 +100,35 @@ void enterLightSleep(uint64_t sleepUs, unsigned long swWakeQuietUs)
   updateModeSwitch();
   esp_sleep_enable_timer_wakeup(sleepUs);
   esp_light_sleep_start();
+}
+
+void counterInit(void)
+{
+  pcnt_config_t pcnt_config; //設定用の構造体の宣言
+  pcnt_config.pulse_gpio_num = sigPin;
+  pcnt_config.ctrl_gpio_num = PCNT_PIN_NOT_USED;
+  pcnt_config.lctrl_mode = PCNT_MODE_KEEP;
+  pcnt_config.hctrl_mode = PCNT_MODE_KEEP;
+  pcnt_config.channel = PCNT_CHANNEL_0;
+  pcnt_config.unit = PCNT_UNIT_0;
+  pcnt_config.pos_mode = PCNT_COUNT_DIS;
+  pcnt_config.neg_mode = PCNT_COUNT_INC;
+  pcnt_config.counter_h_lim = pcnt_h_lim;
+  pcnt_config.counter_l_lim = pcnt_l_lim;
+  pcnt_unit_config(&pcnt_config);   //ユニット初期化
+  pcnt_counter_pause(PCNT_UNIT_0);  //カウンタ一時停止
+  pcnt_counter_clear(PCNT_UNIT_0);  //カウンタ初期化
+  pcnt_counter_resume(PCNT_UNIT_0); //カウント開始
+}
+
+void counterClear(void)
+{
+  pcnt_counter_clear(PCNT_UNIT_0);
+}
+
+int16_t getCount(void)
+{
+  int16_t count = 0; //カウント数
+  pcnt_get_counter_value(PCNT_UNIT_0, &count);
+  return count;
 }
