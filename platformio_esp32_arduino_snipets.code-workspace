@@ -28,6 +28,10 @@
 		{
 			"name": "mqttPub_async",
 			"path": "mqttPub_async"
+		},
+		{
+			"name": "swd2-2_io",
+			"path": "swd2-2_io"
 		}
 	],
 	"settings": {}
