@@ -14,6 +14,7 @@ const unsigned long sendIntervalMillis = 3000;
 unsigned long preSigMillis = 0;
 const unsigned long sigDeadMillis = 1000;
 
+
 void task_test(void *pvParameters)
 {
   while (true)
