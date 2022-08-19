@@ -9,6 +9,9 @@
 #define USERNAME "sub"
 #define PASSWORD "mosquitto"
 
+const char *ntpServer1 = "raspberrypi.local";
+const char *time_zone = "JST-9"; // TimeZone rule for Europe/Rome including daylight adjustment rules (optional)
+
 AsyncMqttClient mqttClient;
 TimerHandle_t mqttReconnectTimer;
 TimerHandle_t wifiReconnectTimer;
@@ -19,8 +22,10 @@ static const unsigned long netTaskTimeout = 5000;
 
 EventGroupHandle_t networkTaskFinished_event_group;
 #define MQTT_OK_BIT BIT0
+#define NTP_OK_BIT BIT1
 
 static bool newtwork_keepConn = false;
+static bool timeAvailable = false;
 
 void connectToWifi()
 {
@@ -45,6 +50,7 @@ void WiFiEvent(WiFiEvent_t event)
         Serial.println("IP address: ");
         Serial.println(WiFi.localIP());
         connectToMqtt();
+        configTzTime(time_zone, ntpServer1);
         break;
     case SYSTEM_EVENT_STA_DISCONNECTED:
         Serial.println("WiFi lost connection");
@@ -86,6 +92,26 @@ void onMqttPublish(uint16_t packetId)
     Serial.println(packetId);
     xEventGroupSetBits(networkTaskFinished_event_group, MQTT_OK_BIT);
 }   
+
+void printLocalTime()
+{
+  struct tm timeinfo;
+  if (!getLocalTime(&timeinfo))
+  {
+    Serial.println("No time available (yet)");
+    return;
+  }
+  Serial.println(&timeinfo, "%A, %B %d %Y %H:%M:%S");
+}
+
+// Callback function (get's called when time adjusts via NTP)
+void timeavailable(struct timeval *t)
+{
+  Serial.println("Got time adjustment from NTP!");
+  printLocalTime();
+  timeAvailable = true;
+  xEventGroupSetBits(networkTaskFinished_event_group, NTP_OK_BIT);
+}
     
 void task_network(void *pvParameters)   
 {   
@@ -102,7 +128,10 @@ void task_network(void *pvParameters)
     mqttClient.onDisconnect(onMqttDisconnect);
     mqttClient.onPublish(onMqttPublish);
     mqttClient.setServer(HOSTNAME, MQTT_PORT);
-    mqttClient.setCredentials(USERNAME, PASSWORD);
+    //mqttClient.setCredentials(USERNAME, PASSWORD);
+
+    sntp_set_time_sync_notification_cb(timeavailable);
+    sntp_servermode_dhcp(1);
 
     unsigned long preSendMqttMillis = millis();
     while (true)
@@ -115,7 +144,7 @@ void task_network(void *pvParameters)
             connectToWifi();
             uint32_t eBits = xEventGroupWaitBits(
                 networkTaskFinished_event_group, // イベントグループを指定
-                MQTT_OK_BIT,                     // 一つ以上のイベントビットを指定
+                MQTT_OK_BIT|NTP_OK_BIT,                     // 一つ以上のイベントビットを指定
                 pdTRUE,                          // 呼び出し後にイベントビットをクリアするか
                 pdTRUE,                          // 指定したイベントビットがすべて揃うまで待つか
                 pdMS_TO_TICKS(netTaskTimeout)              // 待ち時間 portMAX_DELAY or / portTICK_TATE_MS
@@ -131,4 +160,8 @@ void task_network(void *pvParameters)
         xEventGroupSetBits(argStruct->sleepEventHandle, argStruct->net_ok_bit);
     }
     vTaskDelete(NULL);
+}
+
+bool getTimeAvailable(void){
+    return timeAvailable;
 }

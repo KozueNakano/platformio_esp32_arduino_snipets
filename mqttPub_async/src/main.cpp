@@ -34,6 +34,18 @@ void setup()
 void loop()
 {
   Serial.println("wake");
+  struct timeval tv;
+  int timeget = gettimeofday(&tv, NULL);
+  if (getTimeAvailable() && (timeget == 0))
+  {
+    Serial.print("tv.sec");
+    Serial.print(tv.tv_sec);
+    Serial.print(" : tv.msec");
+    Serial.println(tv.tv_usec/1000);
+    Serial.print("timeAvailableFlag");
+    Serial.println(getTimeAvailable());
+  }
+  
   xEventGroupClearBits(sleepable_event_group, 0xFFFFFF);
   uint32_t eBits = xEventGroupWaitBits(
       sleepable_event_group, // イベントグループを指定
@@ -42,5 +54,6 @@ void loop()
       pdTRUE,                // 指定したイベントビットがすべて揃うまで待つか
       portMAX_DELAY          // 待ち時間 portMAX_DELAY or / portTICK_TATE_MS
   );
+  Serial.flush();
   esp_light_sleep_start();
 }

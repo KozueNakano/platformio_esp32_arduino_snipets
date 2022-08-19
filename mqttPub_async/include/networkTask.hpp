@@ -9,6 +9,8 @@ extern "C"
 #include "freertos/timers.h"
 }
 #include <AsyncMqttClient.h>
+#include "time.h"
+#include "sntp.h"
 
 
 
@@ -19,3 +21,4 @@ struct networkTaskArgs
 };
 
 void task_network(void *pvParameters);
+bool getTimeAvailable(void);
