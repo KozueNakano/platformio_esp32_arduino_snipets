@@ -32,6 +32,9 @@
 		{
 			"name": "swd2-2_io",
 			"path": "swd2-2_io"
+		},
+		{
+			"path": "swd2-2"
 		}
 	],
 	"settings": {}
