@@ -3,7 +3,7 @@
 #include "driver/pcnt.h"
 #include "networkTask.hpp"
 
-char deviceName[] = "SWD35";
+String deviceName = "SWD36";
 
 EventGroupHandle_t sleepable_event_group;
 #define NET_OK_BIT BIT0
@@ -24,16 +24,33 @@ class stateTimeData
 {
 private:
   SemaphoreHandle_t mutex;
-  stateTv stateTimeArray[5];
+  stateTv stateTimeArray[1023];
   int arrayQty;
   int index;
+  int indexStore;
+  const String deviceNameHead = "{\"deviceName\":\"";
+  const String deviceNameFoot = "\"";
+  const String timeHead = ",\"detectedTime\":[";
+  const String timeFoot = "]";
+  const String timeMsHead = ",\"detectedTime_ms\":[";
+  const String timeMsFoot = "]";
+  const String stateHead = ",\"state\":[";
+  const String stateFoot = "]";
+  const String macHead = ",\"macAddress\":\"";
+  const String macFoot = "\"}";
 
 public:
   stateTimeData(/* args */);
+  int getArrayQty(void);
   void addData(stateTv);
   void serialPrint(void);
   int getIndex(void);
   void deleteData(int deleteBeforeIndex);
+  void keepIndex(void);
+  void deleteDataBeforeKeep(void);
+  int requiredStringLength(void);
+  bool getJsonString(String *buffString, String *deviceName, uint64_t macaddress);
+
   ~stateTimeData();
 } stateTime;
 
@@ -43,7 +60,10 @@ stateTimeData::stateTimeData(/* args */)
   index = 0;
   mutex = xSemaphoreCreateMutex();
 }
-
+int stateTimeData::getArrayQty(void)
+{
+  return arrayQty;
+}
 void stateTimeData::addData(stateTv argStr)
 {
   xSemaphoreTake(mutex, portMAX_DELAY);
@@ -87,27 +107,124 @@ void stateTimeData::deleteData(int deleteBeforeIndex)
     if (readIndex < arrayQty)
     {
       stateTimeArray[i] = stateTimeArray[deleteBeforeIndex + i];
-    }else{
+    }
+    else
+    {
       stateTimeArray[i].state = NP;
       stateTimeArray[i].tv.tv_sec = 0;
       stateTimeArray[i].tv.tv_usec = 0;
     }
   }
+  index = index - deleteBeforeIndex;
   xSemaphoreGive(mutex);
 }
+void stateTimeData::keepIndex(void)
+{
+  indexStore = index;
+}
 
+void stateTimeData::deleteDataBeforeKeep(void)
+{
+  deleteData(indexStore);
+}
+
+int stateTimeData::requiredStringLength(void)
+{
+  int reserveLength = deviceNameHead.length() + /*SWDxxxx*/ 7 + deviceNameFoot.length() + timeHead.length() + 11 * arrayQty /*,4294967295*/ + timeFoot.length() + timeMsHead.length() + 11 * arrayQty /*,4294967295*/ + timeMsFoot.length() + stateHead.length() + 2 * arrayQty /*0,1,2*/ + stateFoot.length() + macHead.length() + 12 /*0xFFFFFFFFFFFF*/ + macFoot.length();
+  return reserveLength;
+}
+bool stateTimeData::getJsonString(String *buffString, String *deviceName, uint64_t macaddress_arg)
+{
+  if (indexStore != 0)
+  {
+    xSemaphoreTake(mutex, portMAX_DELAY);
+    buffString->clear();
+    buffString->concat(deviceNameHead);
+    buffString->concat(*deviceName);
+    buffString->concat(deviceNameFoot);
+    buffString->concat(timeHead);
+    for (int i = 0; i < indexStore; i++)
+    {
+      if (i != 0)
+        buffString->concat(",");
+      buffString->concat(String((stateTimeArray[i].tv.tv_sec), DEC));
+    }
+    buffString->concat(timeFoot);
+    buffString->concat(timeMsHead);
+    for (int i = 0; i < indexStore; i++)
+    {
+      if (i != 0)
+        buffString->concat(",");
+      buffString->concat(String((stateTimeArray[i].tv.tv_usec / 1000), DEC));
+    }
+    buffString->concat(timeMsFoot);
+    buffString->concat(stateHead);
+    for (int i = 0; i < indexStore; i++)
+    {
+      if (i != 0)
+        buffString->concat(",");
+      buffString->concat(String((stateTimeArray[i].state), DEC));
+    }
+    buffString->concat(stateFoot);
+    buffString->concat(macHead);
+    char macChar[13] = "";
+    sprintf(macChar, "%012llx", macaddress_arg);
+    buffString->concat(String(macChar));
+    buffString->concat(macFoot);
+    xSemaphoreGive(mutex);
+    return true;
+  }else{
+    return false;
+  }
+}
 stateTimeData::~stateTimeData()
 {
 }
 
+void printDataArray_cb(void)
+{
+  Serial.println("-------printDataArray_cb--------");
+  stateTime.serialPrint();
+}
+void keepIndex_cb(void)
+{
+  Serial.println("-------keepIndex_cb--------");
+  stateTime.keepIndex();
+}
+void deleteDataBeforeKeep_cb(void)
+{
+  Serial.println("-------deleteDataBeforeKeep_cb--------");
+  stateTime.deleteDataBeforeKeep();
+}
+
+String jsonStringBuffer;
+void reserveJsonString(void)
+{
+  jsonStringBuffer.reserve(stateTime.requiredStringLength());
+}
+
+bool getJsonString_cb(String** stringBuffer)
+{
+  Serial.println("------getJsonString_cb-------");
+  bool available = stateTime.getJsonString(&jsonStringBuffer, &deviceName, getMacaddress_int());
+  *stringBuffer = &jsonStringBuffer;
+  return available;
+}
+
 void setup()
 {
+  Serial.begin(115200);
+  reserveJsonString();
   // イベントグループの初期化
   sleepable_event_group = xEventGroupCreate();
   xEventGroupClearBits(sleepable_event_group, 0xFFFFFF);
 
   netTaskArg.net_ok_bit = NET_OK_BIT;
   netTaskArg.sleepEventHandle = sleepable_event_group;
+  set_printArrayCb(printDataArray_cb);
+  set_keepIndexCb(keepIndex_cb);
+  set_deleteBeforeKeepCb(deleteDataBeforeKeep_cb);
+  set_getJsonStringCb(getJsonString_cb);
 
   xTaskCreateUniversal(
       task_network,               // 作成するタスク関数
@@ -119,19 +236,8 @@ void setup()
       CONFIG_ARDUINO_RUNNING_CORE // 実行するコア
   );
 
-  Serial.begin(115200);
   swIoSetting();
   counterInit();
-}
-
-uint64_t octetToIntMac(uint8_t *octetArray)
-{
-  uint64_t intVal = 0;
-  for (int i = 0; i < 6; i++)
-  {
-    intVal = (intVal << 8) | octetArray[i];
-  }
-  return intVal;
 }
 
 void sigDetected(void)
@@ -149,17 +255,13 @@ void sigDetected(void)
     tempStateTv.state = getState();
     tempStateTv.tv = tv;
     stateTime.addData(tempStateTv);
-    stateTime.serialPrint();
+    // stateTime.serialPrint();
     Serial.print("tv.sec");
     Serial.print(tv.tv_sec);
     Serial.print(" : tv.msec");
     Serial.println(tv.tv_usec / 1000);
-    uint8_t octet[6];
-    getMacaddress(octet);
     Serial.print("macaddress:");
-    Serial.println(getMacaddressString());
-    Serial.print("macaddress:");
-    Serial.println(octetToIntMac(octet), HEX);
+    Serial.println(getMacaddress_int(), HEX);
   }
 }
 
@@ -208,8 +310,7 @@ void loop()
     }
 
     updateModeState();
-    Serial.print("state:");
-    Serial.println(getState());
+    Serial.println(".");
 
     delay(100);
     uint32_t eBits = xEventGroupWaitBits(

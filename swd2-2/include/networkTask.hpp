@@ -23,5 +23,8 @@ struct networkTaskArgs
 void task_network(void *pvParameters);
 bool getTimeAvailable(void);
 void setSendNow(void);
-uint8_t* getMacaddress(uint8_t*);
-String getMacaddressString(void);
+uint64_t getMacaddress_int(void);
+void set_keepIndexCb(void(*func)(void));
+void set_deleteBeforeKeepCb(void(*func)(void));
+void set_printArrayCb(void(*func)());
+void set_getJsonStringCb(bool(*func)(String**));
