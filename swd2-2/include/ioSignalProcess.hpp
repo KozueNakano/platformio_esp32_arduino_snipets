@@ -1,5 +1,9 @@
+// ioSignalProcess.hpp
+#ifndef IO_SIGNAL_PROCESS
+#define IO_SIGNAL_PROCESS
 #include <Arduino.h>
 #include "driver/pcnt.h"
+#include "stateNum.hpp"
 
 enum wakeupCause
 {
@@ -8,13 +12,6 @@ enum wakeupCause
   TIMER,
   SEND,
   MODE,
-};
-
-enum stateNum
-{
-  NP,
-  REST,
-  DO
 };
 
 void swIoSetting(void);
@@ -27,3 +24,5 @@ int16_t getCount(void);
 void updateModeState(void);
 void updateModeToggleState(void);
 stateNum getState(void);
+
+#endif

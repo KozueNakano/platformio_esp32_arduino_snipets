@@ -1,3 +1,7 @@
+// networkTask.hpp
+#ifndef NETWORK_TASK
+#define NETWORK_TASK
+
 #include <Arduino.h>
 /*
 This example uses FreeRTOS softwaretimers as there is no built-in Ticker library
@@ -28,3 +32,5 @@ void set_keepIndexCb(void(*func)(void));
 void set_deleteBeforeKeepCb(void(*func)(void));
 void set_printArrayCb(void(*func)());
 void set_getJsonStringCb(bool(*func)(String**));
+
+#endif

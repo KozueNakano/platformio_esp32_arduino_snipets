@@ -107,7 +107,6 @@ void onMqttConnect(bool sessionPresent)
         Serial.print("Publishing at QoS 1, packetId: ");
         Serial.println(packetIdPub1);
     }else{
-        deleteBeforeKeepCb();
         xEventGroupSetBits(networkTaskFinished_event_group, MQTT_OK_BIT);
     }
 }
