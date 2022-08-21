@@ -33,6 +33,7 @@ void (*keepIndexCb)(void);
 void (*deleteBeforeKeepCb)(void);
 void (*printArrayCb)(void);
 bool (*getJsonStringCb)(String **);
+void (*lcdSetNetStatusCb)(int);
 
 void set_keepIndexCb(void (*func)(void))
 {
@@ -51,6 +52,11 @@ void set_printArrayCb(void (*func)())
 void set_getJsonStringCb(bool (*func)(String **))
 {
     getJsonStringCb = func;
+}
+
+void set_lcdSetNetStatusCb(void (*func)(int))
+{
+    lcdSetNetStatusCb = func;
 }
 
 void connectToWifi()
@@ -106,7 +112,9 @@ void onMqttConnect(bool sessionPresent)
         uint16_t packetIdPub1 = mqttClient.publish("/topic/qos1", 1, false, c_str); // todo トピック名適当
         Serial.print("Publishing at QoS 1, packetId: ");
         Serial.println(packetIdPub1);
-    }else{
+    }
+    else
+    {
         xEventGroupSetBits(networkTaskFinished_event_group, MQTT_OK_BIT);
     }
 }
@@ -182,10 +190,22 @@ void task_network(void *pvParameters)
             uint32_t eBits = xEventGroupWaitBits(
                 networkTaskFinished_event_group, // イベントグループを指定
                 MQTT_OK_BIT | NTP_OK_BIT,        // 一つ以上のイベントビットを指定
-                pdTRUE,                          // 呼び出し後にイベントビットをクリアするか
+                pdFALSE,                         // タイムアウト以外で戻った場合に、イベントフラグをクリアする
                 pdTRUE,                          // 指定したイベントビットがすべて揃うまで待つか
                 pdMS_TO_TICKS(netTaskTimeout)    // 待ち時間 portMAX_DELAY or / portTICK_TATE_MS
             );
+            if ((eBits & (MQTT_OK_BIT | NTP_OK_BIT)) == (MQTT_OK_BIT | NTP_OK_BIT))
+            {
+                Serial.println("net task SUCSESS");
+                lcdSetNetStatusCb(2);
+            }
+            else
+            {
+                Serial.println("network FAILS");
+                lcdSetNetStatusCb(1);
+            }
+            xEventGroupClearBits(networkTaskFinished_event_group, 0xFFFFFF);
+
             newtwork_keepConn = false;
             xTimerStop(wifiReconnectTimer, 0);
             xTimerStop(mqttReconnectTimer, 0);

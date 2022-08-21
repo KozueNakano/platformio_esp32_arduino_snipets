@@ -3,6 +3,7 @@
 #include "driver/pcnt.h"
 #include "networkTask.hpp"
 #include "stateTimeData.hpp"
+#include "lcd_ctrl.hpp"
 
 String deviceName = "SWD36";
 
@@ -48,34 +49,6 @@ bool getJsonString_cb(String **stringBuffer)
   return available;
 }
 
-void setup()
-{
-  Serial.begin(115200);
-  reserveJsonString();
-  // イベントグループの初期化
-  sleepable_event_group = xEventGroupCreate();
-  xEventGroupClearBits(sleepable_event_group, 0xFFFFFF);
-
-  netTaskArg.net_ok_bit = NET_OK_BIT;
-  netTaskArg.sleepEventHandle = sleepable_event_group;
-  set_printArrayCb(printDataArray_cb);
-  set_keepIndexCb(keepIndex_cb);
-  set_deleteBeforeKeepCb(deleteDataBeforeKeep_cb);
-  set_getJsonStringCb(getJsonString_cb);
-
-  xTaskCreateUniversal(
-      task_network,               // 作成するタスク関数
-      "task_network",             // 表示用タスク名
-      8192,                       // スタックメモリ量
-      &netTaskArg,                // 起動パラメータ
-      1,                          // 優先度
-      &task_network_handle,       // タスクハンドル
-      CONFIG_ARDUINO_RUNNING_CORE // 実行するコア
-  );
-
-  swIoSetting();
-  counterInit();
-}
 int tempCounter = 0;
 void sigDetected(void)
 {
@@ -88,14 +61,13 @@ void sigDetected(void)
   {
     updateModeToggleState();
     stateTv tempStateTv;
-    /*
     tempStateTv.state = getState();
     tempStateTv.tv = tv;
-    stateTime.addData(tempStateTv);
-    */
-    tempStateTv.state = NP;
-    tempStateTv.tv.tv_sec = tempCounter;
-    tempStateTv.tv.tv_usec = tempCounter*1000;
+    /*
+     tempStateTv.state = NP;
+     tempStateTv.tv.tv_sec = tempCounter;
+     tempStateTv.tv.tv_usec = tempCounter*1000;
+     */
     stateTime.addData(tempStateTv);
     tempCounter++;
     // stateTime.serialPrint();
@@ -110,15 +82,56 @@ void sigDetected(void)
   }
 }
 
+void setup()
+{
+  Serial.begin(115200);
+  analogReadResolution(12);
+  lcdInit();
+  reserveJsonString();
+  // イベントグループの初期化
+  sleepable_event_group = xEventGroupCreate();
+  xEventGroupClearBits(sleepable_event_group, 0xFFFFFF);
+
+  netTaskArg.net_ok_bit = NET_OK_BIT;
+  netTaskArg.sleepEventHandle = sleepable_event_group;
+  set_printArrayCb(printDataArray_cb);
+  set_keepIndexCb(keepIndex_cb);
+  set_deleteBeforeKeepCb(deleteDataBeforeKeep_cb);
+  set_getJsonStringCb(getJsonString_cb);
+  set_lcdSetNetStatusCb(lcdSetNetStatus);
+
+  xTaskCreateUniversal(
+      task_network,               // 作成するタスク関数
+      "task_network",             // 表示用タスク名
+      8192,                       // スタックメモリ量
+      &netTaskArg,                // 起動パラメータ
+      1,                          // 優先度
+      &task_network_handle,       // タスクハンドル
+      CONFIG_ARDUINO_RUNNING_CORE // 実行するコア
+  );
+
+  swIoSetting();
+  counterInit();
+}
+
 void loop()
 {
 
   wakeupCause wokeUpTo = getWakeupCause();
   // start pulse counter
   counterClear();
-  vTaskResume(task_network_handle);
   Serial.println();
   Serial.println("wakeup! cause:-----------------------------------------------");
+  int battMilliVolts = analogReadMilliVolts(A13) * 2;
+  if (battMilliVolts < 3500)
+  {
+    vTaskSuspend(task_network_handle);
+    lcdShutdown();
+    Serial.println("LOW BATT");
+    Serial.flush();
+    esp_deep_sleep_start();
+  }
+
   switch (wokeUpTo)
   {
   case SIG:
@@ -143,6 +156,7 @@ void loop()
   Serial.println("main while start");
   Serial.flush();
   xEventGroupClearBits(sleepable_event_group, 0xFFFFFF);
+  vTaskResume(task_network_handle);
   while (true)
   {
     Serial.print("_");
@@ -163,6 +177,7 @@ void loop()
     }
 
     updateModeState();
+    lcdSetState(getState());
 
     delay(100);
     uint32_t eBits = xEventGroupWaitBits(

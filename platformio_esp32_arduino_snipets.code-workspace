@@ -39,6 +39,10 @@
 		{
 			"name": "stateTimeData",
 			"path": "stateTimeData"
+		},
+		{
+			"name": "readBatt",
+			"path": "readBatt"
 		}
 	],
 	"settings": {

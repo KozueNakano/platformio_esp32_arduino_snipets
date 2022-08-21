@@ -8,4 +8,6 @@ enum stateNum
   DO
 };
 
+String getStateNumCh(stateNum);
+
 #endif

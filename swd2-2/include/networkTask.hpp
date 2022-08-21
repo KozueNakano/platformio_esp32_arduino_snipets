@@ -15,6 +15,7 @@ extern "C"
 #include <AsyncMqttClient.h>
 #include "time.h"
 #include "sntp.h"
+#include "stateNum.hpp"
 
 
 
@@ -32,5 +33,6 @@ void set_keepIndexCb(void(*func)(void));
 void set_deleteBeforeKeepCb(void(*func)(void));
 void set_printArrayCb(void(*func)());
 void set_getJsonStringCb(bool(*func)(String**));
+void set_lcdSetNetStatusCb(void(*func)(int));
 
 #endif

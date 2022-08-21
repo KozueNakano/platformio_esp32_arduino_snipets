@@ -103,7 +103,7 @@ void stateTimeData::deleteDataBeforeKeep(void)
 
 int stateTimeData::requiredStringLength(void)
 {
-    int reserveLength = deviceNameHead.length() + /*SWDxxxx*/ 7 + deviceNameFoot.length() + timeHead.length() + 11 * arrayQty /*,4294967295*/ + timeFoot.length() + timeMsHead.length() + 11 * arrayQty /*,4294967295*/ + timeMsFoot.length() + stateHead.length() + 2 * arrayQty /*0,1,2*/ + stateFoot.length() + macHead.length() + 12 /*0xFFFFFFFFFFFF*/ + macFoot.length();
+    int reserveLength = deviceNameHead.length() + /*SWDxxxx*/ 7 + deviceNameFoot.length() + timeHead.length() + 11 * arrayQty /*,4294967295*/ + timeFoot.length() + timeMsHead.length() + 11 * arrayQty /*,4294967295*/ + timeMsFoot.length() + stateHead.length() + 7 * arrayQty /*"NP","DO","REST"*/ + stateFoot.length() + macHead.length() + 12 /*0xFFFFFFFFFFFF*/ + macFoot.length();
     return reserveLength;
 }
 bool stateTimeData::getJsonString(String *buffString, String *deviceName, uint64_t macaddress_arg)
@@ -136,7 +136,9 @@ bool stateTimeData::getJsonString(String *buffString, String *deviceName, uint64
         {
             if (i != 0)
                 buffString->concat(",");
-            buffString->concat(String((stateTimeArray[i].state), DEC));
+            buffString->concat("\"");
+            buffString->concat(getStateNumCh(stateTimeArray[i].state));
+            buffString->concat("\"");
         }
         buffString->concat(stateFoot);
         buffString->concat(macHead);
