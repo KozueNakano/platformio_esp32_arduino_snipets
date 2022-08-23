@@ -89,6 +89,7 @@ void setup()
   analogReadResolution(12);
   lcdInit();
   reserveJsonString();
+  setMqttBufferSize(stateTime.requiredStringLength()+20);
   // イベントグループの初期化
   sleepable_event_group = xEventGroupCreate();
   xEventGroupClearBits(sleepable_event_group, 0xFFFFFF);
@@ -101,16 +102,6 @@ void setup()
   set_getJsonStringCb(getJsonString_cb);
   set_lcdSetNetStatusCb(lcdSetNetStatus);
 
-  xTaskCreateUniversal(
-      task_network,               // 作成するタスク関数
-      "task_network",             // 表示用タスク名
-      8192,                       // スタックメモリ量
-      &netTaskArg,                // 起動パラメータ
-      1,                          // 優先度
-      &task_network_handle,       // タスクハンドル
-      CONFIG_ARDUINO_RUNNING_CORE // 実行するコア
-  );
-
   swIoSetting();
   counterInit();
 }
@@ -122,11 +113,10 @@ void loop()
   // start pulse counter
   counterClear();
   // Serial.println();
-  // Serial.println("wakeup! cause:-----------------------------------------------");
+  //Serial.println("wakeup! cause:-----------------------------------------------");
   int battMilliVolts = analogReadMilliVolts(A13) * 2;
   if (battMilliVolts < 3500)
   {
-    vTaskSuspend(task_network_handle);
     lcdShutdown();
     // Serial.println("LOW BATT");
     // Serial.flush();
@@ -157,11 +147,18 @@ void loop()
   // Serial.println("main while start");
   // Serial.flush();
   xEventGroupClearBits(sleepable_event_group, 0xFFFFFF);
-  vTaskResume(task_network_handle);
+    xTaskCreateUniversal(
+      task_network,               // 作成するタスク関数
+      "task_network",             // 表示用タスク名
+      8192,                       // スタックメモリ量
+      &netTaskArg,                // 起動パラメータ
+      1,                          // 優先度
+      &task_network_handle,       // タスクハンドル
+      CONFIG_ARDUINO_RUNNING_CORE // 実行するコア
+  );
   while (true)
   {
-    // Serial.print("_");
-    // Serial.flush();
+    //Serial.println("_");
     if ((sigAtSleepFlag == true))
     {
       sigAtSleepFlag = false;
@@ -197,7 +194,6 @@ void loop()
   // Serial.println();
   // Serial.println("------------------------------------------main while end");
   // Serial.flush();
-  vTaskSuspend(task_network_handle);
 
   unsigned long swQuitMillis = 0;
   unsigned long millisFromPreSig = millis() - preSigMillis;

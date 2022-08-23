@@ -12,7 +12,7 @@ extern "C"
 #include "freertos/FreeRTOS.h"
 #include "freertos/timers.h"
 }
-#include <AsyncMqttClient.h>
+#include <PubSubClient.h>
 #include "time.h"
 #include "sntp.h"
 #include "stateNum.hpp"
@@ -28,6 +28,7 @@ struct networkTaskArgs
 void task_network(void *pvParameters);
 bool getTimeAvailable(void);
 void setSendNow(void);
+void setMqttBufferSize(uint16_t size);
 uint64_t getMacaddress_int(void);
 void set_keepIndexCb(void(*func)(void));
 void set_deleteBeforeKeepCb(void(*func)(void));
