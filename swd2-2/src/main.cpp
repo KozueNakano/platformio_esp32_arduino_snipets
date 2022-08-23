@@ -21,17 +21,17 @@ stateTimeData stateTime;
 
 void printDataArray_cb(void)
 {
-  Serial.println("-------printDataArray_cb--------");
+  // Serial.println("-------printDataArray_cb--------");
   stateTime.serialPrint();
 }
 void keepIndex_cb(void)
 {
-  Serial.println("-------keepIndex_cb--------");
+  // Serial.println("-------keepIndex_cb--------");
   stateTime.keepIndex();
 }
 void deleteDataBeforeKeep_cb(void)
 {
-  Serial.println("-------deleteDataBeforeKeep_cb--------");
+  // Serial.println("-------deleteDataBeforeKeep_cb--------");
   stateTime.deleteDataBeforeKeep();
 }
 
@@ -43,7 +43,7 @@ void reserveJsonString(void)
 
 bool getJsonString_cb(String **stringBuffer)
 {
-  Serial.println("------getJsonString_cb-------");
+  // Serial.println("------getJsonString_cb-------");
   bool available = stateTime.getJsonString(&jsonStringBuffer, &deviceName, getMacaddress_int());
   *stringBuffer = &jsonStringBuffer;
   return available;
@@ -64,21 +64,22 @@ void sigDetected(void)
     tempStateTv.state = getState();
     tempStateTv.tv = tv;
     /*
-     tempStateTv.state = NP;
-     tempStateTv.tv.tv_sec = tempCounter;
-     tempStateTv.tv.tv_usec = tempCounter*1000;
-     */
+    tempStateTv.state = NP;
+    tempStateTv.tv.tv_sec = tempCounter;
+    tempStateTv.tv.tv_usec = tempCounter * 1000;
+    */
+
     stateTime.addData(tempStateTv);
     tempCounter++;
     // stateTime.serialPrint();
-    Serial.println("signal store");
-    Serial.print("tv.sec");
-    Serial.print(tv.tv_sec);
-    Serial.print(" : tv.msec");
-    Serial.println(tv.tv_usec / 1000);
-    Serial.print("macaddress:");
-    Serial.println(getMacaddress_int(), HEX);
-    Serial.flush();
+    // Serial.println("signal store");
+    // Serial.print("tv.sec");
+    // Serial.print(tv.tv_sec);
+    // Serial.print(" : tv.msec");
+    // Serial.println(tv.tv_usec / 1000);
+    // Serial.print("macaddress:");
+    // Serial.println(getMacaddress_int(), HEX);
+    // Serial.flush();
   }
 }
 
@@ -120,47 +121,47 @@ void loop()
   wakeupCause wokeUpTo = getWakeupCause();
   // start pulse counter
   counterClear();
-  Serial.println();
-  Serial.println("wakeup! cause:-----------------------------------------------");
+  // Serial.println();
+  // Serial.println("wakeup! cause:-----------------------------------------------");
   int battMilliVolts = analogReadMilliVolts(A13) * 2;
   if (battMilliVolts < 3500)
   {
     vTaskSuspend(task_network_handle);
     lcdShutdown();
-    Serial.println("LOW BATT");
-    Serial.flush();
+    // Serial.println("LOW BATT");
+    // Serial.flush();
     esp_deep_sleep_start();
   }
 
   switch (wokeUpTo)
   {
   case SIG:
-    Serial.println("sig");
+    // Serial.println("sig");
     sigAtSleepFlag = true;
     break;
   case TIMER:
-    Serial.println("timer");
+    // Serial.println("timer");
     break;
   case SEND:
-    Serial.println("send");
+    // Serial.println("send");
     setSendNow();
     break;
   case MODE:
-    Serial.println("mode");
+    // Serial.println("mode");
     break;
   default:
-    Serial.println();
+    // Serial.println();
     break;
   }
 
-  Serial.println("main while start");
-  Serial.flush();
+  // Serial.println("main while start");
+  // Serial.flush();
   xEventGroupClearBits(sleepable_event_group, 0xFFFFFF);
   vTaskResume(task_network_handle);
   while (true)
   {
-    Serial.print("_");
-    Serial.flush();
+    // Serial.print("_");
+    // Serial.flush();
     if ((sigAtSleepFlag == true))
     {
       sigAtSleepFlag = false;
@@ -193,9 +194,9 @@ void loop()
       break;
     }
   }
-  Serial.println();
-  Serial.println("------------------------------------------main while end");
-  Serial.flush();
+  // Serial.println();
+  // Serial.println("------------------------------------------main while end");
+  // Serial.flush();
   vTaskSuspend(task_network_handle);
 
   unsigned long swQuitMillis = 0;

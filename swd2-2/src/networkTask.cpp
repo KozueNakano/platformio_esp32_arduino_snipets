@@ -1,15 +1,15 @@
 #include <networkTask.hpp>
 
 // wifi credential
-#define WIFI_SSID "mqtt_server_ssid"
-#define WIFI_PASSWORD "mosquitto"
+#define WIFI_SSID "SWD2-2_AP"//"mqtt_server_ssid"
+#define WIFI_PASSWORD "switchDevice2-2"//"mosquitto"
 // mqtt credential
-#define HOSTNAME "raspberrypi.local"
+#define HOSTNAME "GarmX280.local"//"raspberrypi.local"
 #define MQTT_PORT 1883
 //#define USERNAME "sub"
 //#define PASSWORD "mosquitto"
 
-const char *ntpServer1 = "raspberrypi.local";
+const char *ntpServer1 = "GarmX280.local";//"raspberrypi.local";
 const char *time_zone = "JST-9"; // TimeZone rule for Europe/Rome including daylight adjustment rules (optional)
 
 AsyncMqttClient mqttClient;
@@ -17,8 +17,8 @@ TimerHandle_t mqttReconnectTimer;
 TimerHandle_t wifiReconnectTimer;
 static const unsigned long mqttReconnectMillis = 2000;
 static const unsigned long wifiReconnectMillis = 2000;
-static const unsigned long sendMqttIntervalMillis = 10000;
-static const unsigned long netTaskTimeout = 5000;
+static const unsigned long sendMqttIntervalMillis = 60000;
+static const unsigned long netTaskTimeout = 10000;
 
 EventGroupHandle_t networkTaskFinished_event_group;
 #define MQTT_OK_BIT BIT0
@@ -61,31 +61,31 @@ void set_lcdSetNetStatusCb(void (*func)(int))
 
 void connectToWifi()
 {
-    Serial.println("Connecting to Wi-Fi...");
+    //Serial.println("Connecting to Wi-Fi...");
     WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
 }
 
 void connectToMqtt()
 {
-    Serial.println("Connecting to MQTT...");
+    //Serial.println("Connecting to MQTT...");
     mqttClient.connect();
 }
 
 void WiFiEvent(WiFiEvent_t event)
 {
-    Serial.printf("[WiFi-event] event: %d\n", event);
+    //Serial.printf("[WiFi-event] event: %d\n", event);
     switch (event)
     {
     case SYSTEM_EVENT_STA_GOT_IP:
         xTimerStop(wifiReconnectTimer, 0);
-        Serial.println("WiFi connected");
-        Serial.println("IP address: ");
-        Serial.println(WiFi.localIP());
+        //Serial.println("WiFi connected");
+        //Serial.println("IP address: ");
+        //Serial.println(WiFi.localIP());
         connectToMqtt();
         configTzTime(time_zone, ntpServer1);
         break;
     case SYSTEM_EVENT_STA_DISCONNECTED:
-        Serial.println("WiFi lost connection");
+        //Serial.println("WiFi lost connection");
         if (newtwork_keepConn == true)
             xTimerStart(wifiReconnectTimer, 0);
         break;
@@ -95,23 +95,23 @@ void WiFiEvent(WiFiEvent_t event)
 void onMqttConnect(bool sessionPresent)
 {
     xTimerStop(mqttReconnectTimer, 0);
-    Serial.println("Connected to MQTT.");
-    Serial.print("Session present: ");
-    Serial.println(sessionPresent);
+    //Serial.println("Connected to MQTT.");
+    //Serial.print("Session present: ");
+    //Serial.println(sessionPresent);
     keepIndexCb();
     // Serial.println(*getJsonStringCb());
     // uint16_t packetIdPub0 = mqttClient.publish("test/lol", 0, false, "test 1");
     // Serial.println("Publishing at QoS 0");
     String *tempStr;
     bool dataAvailable = getJsonStringCb(&tempStr);
-    Serial.print("available");
-    Serial.println(dataAvailable);
+    //Serial.print("available");
+    //Serial.println(dataAvailable);
     if (dataAvailable != 0)
     {
         const char *c_str = tempStr->c_str();
         uint16_t packetIdPub1 = mqttClient.publish("/topic/qos1", 1, false, c_str); // todo トピック名適当
-        Serial.print("Publishing at QoS 1, packetId: ");
-        Serial.println(packetIdPub1);
+        //Serial.print("Publishing at QoS 1, packetId: ");
+        //Serial.println(packetIdPub1);
     }
     else
     {
@@ -121,7 +121,7 @@ void onMqttConnect(bool sessionPresent)
 
 void onMqttDisconnect(AsyncMqttClientDisconnectReason reason)
 {
-    Serial.println("Disconnected from MQTT.");
+    //Serial.println("Disconnected from MQTT.");
     if (WiFi.isConnected() && (newtwork_keepConn == true))
     {
         xTimerStart(mqttReconnectTimer, 0);
@@ -131,9 +131,9 @@ void onMqttDisconnect(AsyncMqttClientDisconnectReason reason)
 void onMqttPublish(uint16_t packetId)
 {
     deleteBeforeKeepCb();
-    Serial.println("Publish acknowledged.");
-    Serial.print("  packetId: ");
-    Serial.println(packetId);
+    //Serial.println("Publish acknowledged.");
+    //Serial.print("  packetId: ");
+    //Serial.println(packetId);
     xEventGroupSetBits(networkTaskFinished_event_group, MQTT_OK_BIT);
 }
 
@@ -142,16 +142,16 @@ void printLocalTime()
     struct tm timeinfo;
     if (!getLocalTime(&timeinfo))
     {
-        Serial.println("No time available (yet)");
+        //Serial.println("No time available (yet)");
         return;
     }
-    Serial.println(&timeinfo, "%A, %B %d %Y %H:%M:%S");
+    //Serial.println(&timeinfo, "%A, %B %d %Y %H:%M:%S");
 }
 
 // Callback function (get's called when time adjusts via NTP)
 void timeavailable(struct timeval *t)
 {
-    Serial.println("Got time adjustment from NTP!");
+    //Serial.println("Got time adjustment from NTP!");
     printLocalTime();
     timeAvailable = true;
     xEventGroupSetBits(networkTaskFinished_event_group, NTP_OK_BIT);
@@ -196,12 +196,12 @@ void task_network(void *pvParameters)
             );
             if ((eBits & (MQTT_OK_BIT | NTP_OK_BIT)) == (MQTT_OK_BIT | NTP_OK_BIT))
             {
-                Serial.println("net task SUCSESS");
+                //Serial.println("net task SUCSESS");
                 lcdSetNetStatusCb(2);
             }
             else
             {
-                Serial.println("network FAILS");
+                //Serial.println("network FAILS");
                 lcdSetNetStatusCb(1);
             }
             xEventGroupClearBits(networkTaskFinished_event_group, 0xFFFFFF);
@@ -212,7 +212,7 @@ void task_network(void *pvParameters)
             mqttClient.disconnect(false);
             WiFi.disconnect();
             WiFi.mode(WIFI_OFF);
-            Serial.println("send finish");
+            //Serial.println("send finish");
         }
         xEventGroupSetBits(argStruct->sleepEventHandle, argStruct->net_ok_bit);
     }
